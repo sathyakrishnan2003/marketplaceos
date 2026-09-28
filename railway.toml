@@ -1,0 +1,9 @@
+[build]
+builder = "NIXPACKS"
+buildCommand = "cd backend && npm ci && npm run build 2>/dev/null || true"
+startCommand = "cd backend && npm start"
+runNixpacks = true
+
+[deploy]
+healthcheckPath = "/health"
+healthcheckTimeout = 30
