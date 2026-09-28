@@ -1,9 +1,10 @@
 [build]
 builder = "NIXPACKS"
-buildCommand = "cd backend && npm ci && npm run build 2>/dev/null || true"
-startCommand = "cd backend && npm start"
-runNixpacks = true
+buildCommand = "npm --prefix backend ci"
+startCommand = "npm --prefix backend start"
 
 [deploy]
 healthcheckPath = "/health"
-healthcheckTimeout = 30
+healthcheckTimeout = 60
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3

@@ -10,6 +10,7 @@
     "dev": "nodemon server.js",
     "db:setup": "node scripts/setup.js",
     "db:migrate": "node scripts/migrate.js",
+    "db:seed": "node scripts/seed.js",
     "lint": "node --check server.js && echo 'Syntax OK'"
   },
   "keywords": [],
