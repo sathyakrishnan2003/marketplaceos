@@ -1,12 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { addToCart, createReview, getOrder, getProduct, getProductRating, getProductReviews, getOrders } from '../services/api'
-
-function imageUrl(image) {
-  if (!image) return null
-  if (image.startsWith('/uploads')) return `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}${image}`
-  return image
-}
+import { addToCart, createReview, getOrder, getOrders, getProduct, getProductRating, getProductReviews, uploadUrl } from '../services/api'
 
 function formatPrice(value) {
   return `₹${Number(value || 0).toLocaleString('en-IN')}`
@@ -81,7 +75,7 @@ export default function ProductDetails({ session, onSignOut }) {
     <header className="public-header"><Link className="brand" to="/shop"><span className="brand-mark">M</span><span>marketplace<span className="brand-dot">.</span></span></Link><nav><Link to="/shop">Back to shop</Link><Link to="/vendors">All vendors</Link>{session?.user?.role === 'customer' && <Link to="/cart">Cart</Link>}{session && <button type="button" className="shop-logout" onClick={onSignOut}>Log out</button>}</nav></header>
     <main className="public-grid">
       <div className="detail-grid">
-        <div className="detail-media"><img src={imageUrl(product.image)} alt={product.name} /></div>
+        <div className="detail-media"><img src={uploadUrl(product.image)} alt={product.name} /></div>
         <div className="detail-content"><Link className="vendor-link" to={`/vendors/${product.vendor_id}`}>{product.vendor} →</Link><h1>{product.name}</h1><p className="description">{product.description}</p><div className="price">{formatPrice(product.price)}</div><p className="badge">{product.category} · {product.stock} in stock</p><div className="action-row" style={{ marginTop: 24 }}><button className="primary-button" onClick={add}>Add to cart</button><Link className="secondary-button" to={`/vendors/${product.vendor_id}`}>Visit vendor</Link></div></div>
       </div>
       <section className="workspace-section"><div className="panel-heading"><div><p className="eyebrow">CUSTOMER REVIEWS</p><h2>{Number(rating?.avg_rating || product.rating || 0).toFixed(1)} ★</h2><p>{rating?.review_count || product.review_count || 0} verified reviews</p></div></div><div className="review-list">{reviews.length ? reviews.map((review) => <article className="review-card" key={review.id}><header><strong>{review.customer}</strong><time>{new Date(review.created_at).toLocaleDateString('en-IN')}</time></header><p>{'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}</p><p>{review.comment || 'Verified purchase'}</p></article>) : <div className="workspace-empty">No reviews yet.</div>}</div></section>

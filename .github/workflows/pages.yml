@@ -34,7 +34,9 @@ jobs:
           BASE_PATH: /${{ github.event.repository.name }}/
           # The static Pages site has no API of its own, so it calls the
           # separately hosted API here. Same-origin when the API serves the SPA.
-          VITE_API_URL: ${{ vars.VITE_API_URL || 'https://marketplaceos-api.onrender.com' }}
+          # Must include the /api prefix: the frontend appends paths like
+          # /auth/login directly to this value.
+          VITE_API_URL: ${{ vars.VITE_API_URL || 'https://marketplaceos-api.onrender.com/api' }}
         run: npm run build
       - name: Add SPA fallback
         # GitHub Pages has no catch-all rewrite, so any client-side route

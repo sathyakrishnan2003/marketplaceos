@@ -1,12 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { addToCart, getCategories, getProducts } from '../services/api'
-
-function imageUrl(image) {
-  if (!image) return null
-  if (image.startsWith('/uploads')) return `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}${image}`
-  return image
-}
+import { addToCart, getCategories, getProducts, uploadUrl } from '../services/api'
 
 function formatPrice(value) {
   return `₹${Number(value || 0).toLocaleString('en-IN')}`
@@ -80,7 +74,7 @@ export default function Products({ session, onSignOut }) {
       {loading && <div className="loading-state">Loading products...</div>}
       {error && <div className="state-box">{error}</div>}
       {!loading && !error && <div className="shop-grid">{visibleProducts.map((product) => <article className="shop-product" key={product.id}>
-        <Link to={`/products/${product.id}`} className="product-art"><img src={imageUrl(product.image)} alt={product.name} /><span className="product-tag">{product.tag}</span></Link>
+        <Link to={`/products/${product.id}`} className="product-art"><img src={uploadUrl(product.image)} alt={product.name} /><span className="product-tag">{product.tag}</span></Link>
         <div className="shop-product-info"><p>{product.category}</p><h3><Link to={`/products/${product.id}`}>{product.name}</Link></h3><div><strong>{formatPrice(product.price)}</strong><span>★ {Number(product.rating || 0).toFixed(1)} · {product.sales || 0} sold</span></div><button className="secondary-button" onClick={() => add(product)} disabled={!session}>Add to cart</button></div>
       </article>)}</div>}
       {!loading && !error && visibleProducts.length === 0 && <div className="empty-state">No products match that search.</div>}

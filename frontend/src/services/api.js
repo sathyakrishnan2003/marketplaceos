@@ -129,6 +129,16 @@ export { ApiError }
 
 export const API_BASE_URL = API_URL
 
+// VITE_API_URL points at the API mount point (e.g. https://host/api), but
+// uploads are served from the host root, so the /api segment is dropped here.
+export const ORIGIN_URL = API_URL.replace(/\/api\/?$/, '')
+
+export function uploadUrl(image) {
+  if (!image) return null
+  if (image.startsWith('/uploads')) return `${ORIGIN_URL}${image}`
+  return image
+}
+
 export async function checkApiHealth() {
   const base = API_URL.replace(/\/api\/?$/, '')
   const controller = new AbortController()
