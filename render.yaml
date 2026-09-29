@@ -1,14 +1,22 @@
 # Render.com blueprint for the MarketplaceOS API (free plan, no card required).
 #
-# The database is NOT declared here: Render only offers a free Postgres (which
-# expires after 30 days), so the API is pointed at an external Aiven free MySQL
-# instance instead. Create that first, then paste the credentials into the
-# DB_* variables when Render prompts for them (marked "sync: false").
+# The frontend is published separately to GitHub Pages
+# (https://sathyakrishnan2003.github.io/marketplaceos), so this service only
+# needs to build and run the Node API. Keeping the build to one npm project
+# makes it fast and gives it a single, small failure surface.
+#
+# The database is NOT declared here: Render's only free database is Postgres and
+# it expires after 30 days, so the API is pointed at an external free MySQL
+# instance (Aiven). Create that first, then paste the credentials into the DB_*
+# variables when Render prompts for them (marked "sync: false").
 #
 #   1. aiven.io -> create a free MySQL service (1 GB) -> note host/port/user/password/db
-#   2. dashboard.render.com/yaml/new -> paste this repo URL
-#   3. fill in the DB_* values, deploy
+#   2. dashboard.render.com -> New + -> Blueprint -> this repo
+#   3. fill in the DB_* values -> Apply
 #   4. from your machine: npm run db:migrate && npm run db:seed
+#
+# The same source also supports a single-host deploy, where Express serves the
+# built SPA itself: see railway.toml and the Dockerfile at the repo root.
 
 services:
   - type: web
@@ -16,14 +24,14 @@ services:
     runtime: node
     plan: free
     autoDeploy: true
-    buildCommand: npm run install:all && npm run build
+    rootDir: backend
+    buildCommand: npm ci
     startCommand: npm start
     envVars:
       - key: NODE_ENV
         value: production
       - key: JWT_SECRET
         generateValue: true
-      # PORT is assigned by Render automatically; do not override it.
       - key: DB_HOST
         sync: false
       - key: DB_PORT
@@ -38,8 +46,10 @@ services:
         value: "true"
       - key: DB_SSL_REJECT_UNAUTHORIZED
         value: "false"
+      # The SPA is served from GitHub Pages, so the browser treats it as a
+      # different origin. This is the origin only (no path, no trailing slash).
       - key: CORS_ORIGIN
-        sync: false
+        value: "https://sathyakrishnan2003.github.io"
       - key: RATE_LIMIT_AUTH_MAX
         value: "10"
       - key: RATE_LIMIT_GENERAL_MAX
