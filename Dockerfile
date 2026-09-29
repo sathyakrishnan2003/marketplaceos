@@ -2,13 +2,21 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-# Install backend dependencies first for layer caching
-COPY backend/package*.json ./backend/
-RUN npm --prefix backend ci --omit=dev
-
-# Copy application code
-COPY backend ./backend
 COPY package.json ./
+COPY backend/package*.json ./backend/
+COPY frontend/package*.json ./frontend/
+
+RUN npm --prefix backend ci --omit=dev \
+ && npm --prefix frontend ci
+
+COPY backend ./backend
+COPY frontend ./frontend
+
+# Build the SPA so Express can serve it from the same origin.
+RUN npm run build
+
+ENV NODE_ENV=production
+ENV FRONTEND_DIST=/app/frontend/dist
 
 WORKDIR /app/backend
 

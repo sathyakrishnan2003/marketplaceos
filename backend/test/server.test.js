@@ -50,10 +50,20 @@ describe("Server endpoints", () => {
         db.end(() => {});
     });
 
-    it("GET / should return running message", async () => {
+    it("GET / should return the SPA shell or the running message", async () => {
         const res = await fetchJson("GET", "/");
         assert.strictEqual(res.status, 200);
-        assert.strictEqual(res.body.message, "MarketplaceOS API is running");
+        const type = res.headers["content-type"] || "";
+        if (type.includes("text/html")) {
+            assert.ok(res.raw.includes('id="root"'), "expected the SPA shell");
+        } else {
+            assert.strictEqual(res.body.message, "MarketplaceOS API is running");
+        }
+    });
+
+    it("unknown non-API routes must not fall through to index.html", async () => {
+        const res = await fetchJson("GET", "/uploads/does-not-exist.png");
+        assert.strictEqual(res.status, 404);
     });
 
     it("GET /health should return ok status", async () => {

@@ -2,6 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
 const path = require("path");
+const fs = require("fs");
 
 dotenv.config();
 
@@ -68,7 +69,16 @@ app.use(
     express.static(UPLOAD_DIR)
 );
 
+// The built SPA, when present, is served from this same origin so the whole
+// app can run on a single host with no CORS setup and no second deploy target.
+const FRONTEND_DIST =
+    process.env.FRONTEND_DIST || path.join(__dirname, "..", "frontend", "dist");
+const hasFrontend = fs.existsSync(FRONTEND_DIST);
+
 app.get("/", (req, res) => {
+    if (hasFrontend) {
+        return res.sendFile(path.join(FRONTEND_DIST, "index.html"));
+    }
     res.json({
         message: "MarketplaceOS API is running"
     });
@@ -91,9 +101,20 @@ app.use("/api/reviews", reviewRoutes);
 app.use("/api/analytics", analyticsRoutes);
 app.use("/api/vendors", vendorRoutes);
 
+// Client-side routes fall back to index.html; /api and /uploads are excluded so
+// unknown endpoints still return JSON 404s.
+if (hasFrontend) {
+    app.use(express.static(FRONTEND_DIST, { index: false }));
+
+    app.get(/^\/(?!api\/|uploads\/|health$).*/, (req, res, next) => {
+        res.sendFile(path.join(FRONTEND_DIST, "index.html"), (err) => {
+            if (err) next(err);
+        });
+    });
+}
+
 app.use(notFoundHandler);
 app.use(errorHandler);
-
 const PORT = process.env.PORT || 5000;
 
 if (require.main === module) {

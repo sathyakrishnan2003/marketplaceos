@@ -87,46 +87,79 @@ frontend/
 
 ---
 
-## Deployment (Railway)
+## Deployment (free, no card)
 
-`railway.toml`, `Procfile`, and `Dockerfile` live at the **repo root**. Do **not** set a root directory in Railway — the config already handles the `backend/` prefix.
+The API also serves the built SPA, so the whole application is **one service on one
+host** — there is no separate frontend deploy and no CORS origin to configure. You
+only need somewhere to run Node and a MySQL database.
 
-1. Railway dashboard → **New Project** → **Deploy from GitHub** → select this repo.
-2. **+ New** → **Database** → **MySQL** (Railway provisions it automatically).
-3. Click your app service → **Variables** and add:
+| Piece | Service | Plan |
+|---|---|---|
+| API + frontend (single service) | [Render](https://dashboard.render.com) | Free web service, 512 MB |
+| MySQL database | [Aiven](https://console.aiven.io/signup?service=mysql) | Free MySQL, 1 GB, no credit card |
 
-   | Variable | Value |
-   |---|---|
-   | `NODE_ENV` | `production` |
-   | `JWT_SECRET` | 32+ char random string |
-   | `CORS_ORIGIN` | `https://<your-app>.up.railway.app` |
-   | `PORT` | `5000` |
-   | `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` | reference the MySQL service |
+### 1. Database — Aiven
 
-   Generate a secret with:
-   ```bash
-   node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
-   ```
+Sign in with GitHub, create a **MySQL** service on the free plan, then copy the
+connection values from its **Connection** page: host, port, user, password, and
+database name. Free Aiven allows one service of each type per account, so delete
+any other MySQL/PostgreSQL service you created before if provisioning is refused.
 
-4. Deploy. The health check hits `/health` and returns `{"status":"ok"}`.
-5. Open **Shell** on the service and initialize the database. Use `migrate` + `seed`, **not** `db:setup` — managed MySQL denies `DROP DATABASE`:
-   ```bash
-   npm run db:migrate
-   npm run db:seed
-   ```
-6. Verify: `https://<your-app>.up.railway.app/health`
+### 2. Deploy the app — Render
 
-**Frontend** (Vercel/Netlify): root directory `frontend`, build command `npm run build`, output `dist`,
-and set `VITE_API_URL=https://<your-backend>.up.railway.app`.
+Go to [dashboard.render.com/yaml/new](https://dashboard.render.com/yaml/new) and
+paste `https://github.com/sathyakrishnan2003/marketplaceos`. Render reads the
+`render.yaml` in this repo, builds the frontend, and serves it from the same origin
+as the API. Fill in the values marked "sync: false" (`DB_HOST`, `DB_PORT`,
+`DB_USER`, `DB_PASSWORD`, `DB_NAME`) with the Aiven values. `JWT_SECRET` is
+generated for you. Leave `CORS_ORIGIN` alone — the SPA is same-origin.
+
+`PORT` is assigned by Render; do not override it.
+
+On the free plan the service **spins down after 15 minutes of inactivity** and the
+first request after that takes about a minute to wake it. That is expected and
+does not mean the deploy is broken.
+
+### 3. Initialize the database
+
+Render's free services have no shell, so run the migration and seed **from your own
+machine** against the Aiven host. Put the Aiven values in `backend/.env` (including
+`DB_SSL=true`), then:
+
+```bash
+cd backend
+npm run db:migrate
+npm run db:seed
+```
+
+`db:setup` drops the database and only works against a local MySQL.
+
+The app is now live at `https://<service>.onrender.com` — API and UI on one URL.
+
+### Known limitation on the free plan
+
+Uploaded product images are written to the container's local disk, which Render
+discards whenever the instance restarts or spins down. Seeded demo products keep
+their images. Durable uploads need object storage (S3/R2), which is a separate
+configuration step.
+
+### Other hosts
+
+`railway.toml`, `Procfile`, and `Dockerfile` live at the **repo root** and all build
+the frontend and start the API together, so any Node host works. For Railway, add
+its MySQL plugin, set `JWT_SECRET`, then run `npm run db:migrate && npm run
+db:seed` in the service shell.
 
 ### Troubleshooting
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| `Build failed`, no output | Root directory set to `backend` | Clear it (set to `/`) and redeploy |
+| Free API takes ~1 min to respond | Render spin-down after 15 min idle | Expected; request a page to wake it |
 | `Server not responding` | Missing `JWT_SECRET` | `server.js` refuses to boot without a 32+ char secret |
 | `Seed failed: command denied` | Ran `db:setup` | Use `db:migrate` + `db:seed` instead |
-| 403 / CORS errors in browser | `CORS_ORIGIN` mismatch | Set it to the exact frontend origin |
+| `ER_SSL` / handshake errors | Missing TLS to Aiven | Set `DB_SSL=true` |
+| 403 / CORS errors in browser | `CORS_ORIGIN` mismatch | Set it to the exact frontend origin, then redeploy |
+| Product images vanish later | Ephemeral container disk | Expected on the free plan — see above |
 
 ---
 
