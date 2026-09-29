@@ -36,6 +36,12 @@ jobs:
           # separately hosted API here. Same-origin when the API serves the SPA.
           VITE_API_URL: ${{ vars.VITE_API_URL || 'https://marketplaceos-api.onrender.com' }}
         run: npm run build
+      - name: Add SPA fallback
+        # GitHub Pages has no catch-all rewrite, so any client-side route
+        # (/vendors/3, /login, ...) is served as a 404 unless a 404.html
+        # exists. Copying the shell over it works because assets are absolute
+        # and the router reads the requested path.
+        run: cp dist/index.html dist/404.html
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
