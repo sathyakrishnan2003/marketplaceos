@@ -5,7 +5,7 @@ import './customer.css'
 import './workspace.css'
 import './pages.css'
 import { getSession, clearSession } from './utils/auth'
-import { logout } from './services/api'
+import { logout, checkApiHealth, API_BASE_URL } from './services/api'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import AddProduct from './pages/AddProduct'
@@ -86,8 +86,21 @@ function WorkspaceRoute({ session, onSignOut, roles, children }) {
   return <ProtectedRoute session={session} roles={roles}><AppLayout session={session} onSignOut={onSignOut}>{children}</AppLayout></ProtectedRoute>
 }
 
+function ApiStatusBanner({ apiDown, onRetry }) {
+  if (!apiDown) return null
+  return (
+    <div className="api-status-banner" role="status">
+      <strong>The backend is not responding.</strong>
+      <span> No products, orders or logins will load until the API is reachable at {API_BASE_URL}.</span>
+      <button type="button" onClick={onRetry}>Retry</button>
+    </div>
+  )
+}
+
 function App() {
   const [session, setSession] = useState(() => getSession())
+  const [apiDown, setApiDown] = useState(false)
+  const [healthNonce, setHealthNonce] = useState(0)
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -95,6 +108,20 @@ function App() {
     window.addEventListener('marketplace:session', handleSession)
     return () => window.removeEventListener('marketplace:session', handleSession)
   }, [])
+
+  useEffect(() => {
+    let active = true
+    const ping = async () => {
+      const ok = await checkApiHealth()
+      if (active) setApiDown(!ok)
+    }
+    ping()
+    const timer = setInterval(ping, 60000)
+    return () => {
+      active = false
+      clearInterval(timer)
+    }
+  }, [healthNonce])
 
   const handleAuthenticated = (nextSession) => {
     setSession(nextSession)
@@ -111,7 +138,9 @@ function App() {
     }
   }
 
-  return <Routes>
+  return <>
+    <ApiStatusBanner apiDown={apiDown} onRetry={() => setHealthNonce((n) => n + 1)} />
+    <Routes>
     <Route path="/login" element={session ? <Navigate to={homeForRole(session.user?.role)} replace /> : <Login onAuthenticated={handleAuthenticated} onSwitch={() => navigate('/register')} />} />
     <Route path="/register" element={session ? <Navigate to={homeForRole(session.user?.role)} replace /> : <Register onSwitch={() => navigate('/login')} />} />
     <Route path="/" element={<Navigate to={session ? homeForRole(session.user?.role) : '/shop'} replace />} />
@@ -134,7 +163,8 @@ function App() {
     <Route path="/admin/escrow" element={<WorkspaceRoute session={session} onSignOut={handleSignOut} roles={['admin']}><Escrow /></WorkspaceRoute>} />
     <Route path="/admin/analytics" element={<WorkspaceRoute session={session} onSignOut={handleSignOut} roles={['admin']}><Dashboard session={session} analyticsOnly /></WorkspaceRoute>} />
     <Route path="*" element={<Navigate to={session ? homeForRole(session.user?.role) : '/shop'} replace />} />
-  </Routes>
+    </Routes>
+  </>
 }
 
 export default App

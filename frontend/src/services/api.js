@@ -126,3 +126,22 @@ export const getVendorAnalytics = () => request('/analytics/vendor')
 export const getVendorTimeSeries = (range = '30d') => request(`/analytics/vendor/time-series?range=${range}`)
 
 export { ApiError }
+
+export const API_BASE_URL = API_URL
+
+export async function checkApiHealth() {
+  const base = API_URL.replace(/\/api\/?$/, '')
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), 8000)
+  try {
+    const response = await fetch(`${base}/health`, {
+      cache: 'no-store',
+      signal: controller.signal,
+    })
+    return response.ok
+  } catch {
+    return false
+  } finally {
+    clearTimeout(timer)
+  }
+}
