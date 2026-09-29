@@ -56,8 +56,20 @@ npm run dev            # http://localhost:5173 (proxies /api to backend)
 ### 3. Run tests
 
 ```bash
-cd backend && npm test   # 84 tests across auth, validation, rate-limit, order state, schema
+cd backend && npm test   # 85 tests across auth, validation, rate-limit, order state, schema
 ```
+
+There is also an end-to-end smoke test that drives the real HTTP API — auth and
+RBAC, public storefronts, the transactional checkout, the escrow hold and
+release, and review eligibility before and after delivery. It needs a running
+server and a migrated database:
+
+```bash
+cd backend && npm start     # terminal 1
+cd backend && npm run smoke # terminal 2 -> 25/25 checks passed
+```
+
+Point it at a deployment with `SMOKE_BASE_URL=https://your-host npm run smoke`.
 
 ---
 
