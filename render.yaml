@@ -50,6 +50,10 @@ services:
       # different origin. This is the origin only (no path, no trailing slash).
       - key: CORS_ORIGIN
         value: "https://sathyakrishnan2003.github.io"
+      # The free plan has no shell, so the service applies the schema and seeds
+      # demo data itself on first boot. Set to "false" to manage them manually.
+      - key: AUTO_MIGRATE
+        value: "true"
       - key: RATE_LIMIT_AUTH_MAX
         value: "10"
       - key: RATE_LIMIT_GENERAL_MAX

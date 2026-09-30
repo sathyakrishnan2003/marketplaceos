@@ -9,6 +9,8 @@ const path = require("path");
 const mysql = require("mysql2/promise");
 require("dotenv").config();
 
+const { connectionOptions } = require("../config/connection");
+
 const IGNORABLE = new Set(["ER_DUP_FIELDNAME", "ER_DUP_KEYNAME", "ER_CANT_DROP_FIELD_OR_KEY", "ER_DUP_ENTRY"]);
 
 async function runIgnoringDuplicates(conn, statements) {
@@ -24,17 +26,22 @@ async function runIgnoringDuplicates(conn, statements) {
 }
 
 async function main() {
-    const conn = await mysql.createConnection({
-        host: process.env.DB_HOST || "localhost",
-        user: process.env.DB_USER || "root",
-        password: process.env.DB_PASSWORD || "root",
-        port: Number(process.env.DB_PORT || 3306),
-        multipleStatements: true,
-    });
-
     const dbName = process.env.DB_NAME || "marketplaceos";
-    await conn.query(`CREATE DATABASE IF NOT EXISTS \`${dbName}\``);
-    await conn.changeUser({ database: dbName });
+
+    // Creating the schema may need a connection with no default database, so
+    // the server is created first and the schema connection opened afterwards.
+    const server = await mysql.createConnection(connectionOptions({ multipleStatements: true }));
+    await server.query(`CREATE DATABASE IF NOT EXISTS \`${dbName}\``);
+    await server.end();
+
+    const conn = await mysql.createConnection(
+        connectionOptions({ database: dbName, multipleStatements: true })
+    );
+
+    const [[current]] = await conn.query("SELECT DATABASE() AS db");
+    if (current.db !== dbName) {
+        throw new Error(`Connected to "${current.db}" but expected "${dbName}"`);
+    }
 
     const schemaPath = path.join(__dirname, "..", "schema.sql");
     await runIgnoringDuplicates(conn, fs.readFileSync(schemaPath, "utf8").split(";"));
@@ -48,11 +55,19 @@ async function main() {
         }
     }
 
-    console.log(`Database "${dbName}" migrated successfully.`);
+    const [[{ total }]] = await conn.query(
+        "SELECT COUNT(*) AS total FROM information_schema.tables WHERE table_schema = ?",
+        [dbName]
+    );
+    console.log(`Database "${dbName}" migrated successfully (${total} tables).`);
     await conn.end();
 }
 
-main().catch((error) => {
-    console.error("Migration failed:", error);
-    process.exit(1);
-});
+module.exports = main;
+
+if (require.main === module) {
+    main().catch((error) => {
+        console.error("Migration failed:", error);
+        process.exit(1);
+    });
+}

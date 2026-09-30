@@ -123,9 +123,25 @@ if (require.main === module) {
         process.exit(1);
     }
 
-    app.listen(PORT, () => {
-        console.log(`MarketplaceOS API running on port ${PORT}`);
-    });
+    const start = async () => {
+        // Hosts without a shell (Render free) cannot run the migration by hand,
+        // so the schema is applied on first boot. Set AUTO_MIGRATE=false to opt
+        // out and manage the schema separately.
+        if (process.env.AUTO_MIGRATE === "true") {
+            try {
+                await require("./scripts/bootstrap")();
+            } catch (error) {
+                console.error("FATAL: database bootstrap failed:", error.message);
+                process.exit(1);
+            }
+        }
+
+        app.listen(PORT, () => {
+            console.log(`MarketplaceOS API running on port ${PORT}`);
+        });
+    };
+
+    start();
 }
 
 module.exports = app;

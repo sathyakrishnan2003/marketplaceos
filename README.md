@@ -134,9 +134,13 @@ does not mean the deploy is broken.
 
 ### 3. Initialize the database
 
-Render's free services have no shell, so run the migration and seed **from your own
-machine** against the Aiven host. Put the Aiven values in `backend/.env` (including
-`DB_SSL=true`), then:
+Render's free services have no shell, so the API prepares the database itself:
+`AUTO_MIGRATE=true` applies the schema on boot and seeds demo data only when the
+database is empty, so restarts and cold starts never re-seed. You do not need to
+run any migration command for the deployment to work.
+
+To do it by hand instead, put the Aiven values in `backend/.env` (including
+`DB_SSL=true`) and run:
 
 ```bash
 cd backend

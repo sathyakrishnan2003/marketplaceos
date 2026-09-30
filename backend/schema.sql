@@ -1,5 +1,6 @@
-CREATE DATABASE IF NOT EXISTS marketplaceos;
-USE marketplaceos;
+-- The database itself is created and selected by scripts/migrate.js from
+-- DB_NAME, so this file stays portable across local, hosted and managed MySQL
+-- (where CREATE DATABASE is often denied).
 
 CREATE TABLE IF NOT EXISTS users (
   id INT AUTO_INCREMENT PRIMARY KEY,

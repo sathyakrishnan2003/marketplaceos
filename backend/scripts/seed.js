@@ -11,6 +11,8 @@ const mysql = require("mysql2/promise");
 const bcrypt = require("bcryptjs");
 require("dotenv").config();
 
+const { connectionOptions } = require("../config/connection");
+
 async function upsertUser(conn, { name, email, passwordHash, role }) {
     await conn.query(
         `INSERT INTO users (name, email, password, role, status)
@@ -23,13 +25,9 @@ async function upsertUser(conn, { name, email, passwordHash, role }) {
 }
 
 async function main() {
-    const conn = await mysql.createConnection({
-        host: process.env.DB_HOST || "localhost",
-        user: process.env.DB_USER || "root",
-        password: process.env.DB_PASSWORD || "root",
-        port: Number(process.env.DB_PORT || 3306),
-        database: process.env.DB_NAME || "marketplaceos",
-    });
+    const conn = await mysql.createConnection(
+        connectionOptions({ database: process.env.DB_NAME || "marketplaceos" })
+    );
 
     const [tables] = await conn.query("SHOW TABLES LIKE 'users'");
     if (!tables.length) {
@@ -100,7 +98,11 @@ async function main() {
     await conn.end();
 }
 
-main().catch((error) => {
-    console.error("Seed failed:", error.message);
-    process.exit(1);
-});
+module.exports = main;
+
+if (require.main === module) {
+    main().catch((error) => {
+        console.error("Seed failed:", error.message);
+        process.exit(1);
+    });
+}
