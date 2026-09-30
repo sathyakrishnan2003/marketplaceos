@@ -50,7 +50,19 @@ async function request(path, options = {}) {
     ...authHeaders(token),
     ...optionHeaders
   }
-  let response = await fetch(`${API_URL}${path}`, { ...requestOptions, headers })
+  let response
+  try {
+    response = await fetch(`${API_URL}${path}`, { ...requestOptions, headers })
+  } catch {
+    // A network-level failure here means the API is unreachable, which is very
+    // different from rejected credentials. Say which, so a login attempt does
+    // not look like a wrong password.
+    throw new ApiError(
+      `Could not reach the server at ${API_URL}. Check that the backend is running.`,
+      0,
+      'API_UNREACHABLE'
+    )
+  }
   if (response.status === 401 && path !== '/auth/refresh' && !path.startsWith('/auth/')) {
     try {
       await refreshAccessToken()
@@ -62,7 +74,12 @@ async function request(path, options = {}) {
       response = await fetch(`${API_URL}${path}`, { ...requestOptions, headers: refreshedHeaders })
     } catch (refreshError) {
       clearSession()
-      throw refreshError
+      if (refreshError instanceof ApiError && refreshError.code === 'API_UNREACHABLE') throw refreshError
+      throw new ApiError(
+        `Could not reach the server at ${API_URL}. Check that the backend is running.`,
+        0,
+        'API_UNREACHABLE'
+      )
     }
   }
   const data = await readJson(response)
