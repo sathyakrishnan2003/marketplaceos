@@ -66,6 +66,33 @@ describe("Server endpoints", () => {
         assert.strictEqual(res.status, 404);
     });
 
+    it("must allow its own origin so the served SPA can load", async () => {
+        // The browser sends Origin for the app's module script when the backend
+        // serves the built frontend. Refusing it blocks the UI and renders a
+        // blank page, so same-origin requests must always be allowed.
+        const res = await fetchJson("GET", "/health", {
+            headers: { Origin: baseUrl }
+        });
+        assert.strictEqual(res.status, 200);
+        assert.strictEqual(
+            res.headers["access-control-allow-origin"],
+            baseUrl,
+            "same-origin requests must be allowed"
+        );
+    });
+
+    it("must not send CORS headers for an unlisted origin", async () => {
+        const res = await fetchJson("GET", "/health", {
+            headers: { Origin: "https://evil.example" }
+        });
+        assert.strictEqual(res.status, 200);
+        assert.strictEqual(
+            res.headers["access-control-allow-origin"],
+            undefined,
+            "an unlisted origin must not be reflected"
+        );
+    });
+
     it("GET /health should return ok status", async () => {
         const res = await fetchJson("GET", "/health");
         assert.strictEqual(res.status, 200);

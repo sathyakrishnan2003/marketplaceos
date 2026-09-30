@@ -27,29 +27,31 @@ const app = express();
 const corsOrigin = process.env.CORS_ORIGIN || "http://localhost:5173";
 const corsOrigins = corsOrigin.split(",").map((o) => o.trim());
 
-const allowedOrigins =
-    corsOrigin === "*" || corsOrigin === ""
-        ? "*"
-        : corsOrigins;
+const allowAllOrigins = corsOrigin === "*" || corsOrigin === "";
+
+function originAllowed(origin) {
+    if (allowAllOrigins) return true;
+    return corsOrigins.some(
+        (o) => o === origin || (o.endsWith("*") && origin.startsWith(o.slice(0, -1)))
+    );
+}
 
 app.use(
-    cors({
-        origin: function (origin, callback) {
-            if (!origin) {
-                return callback(null, true);
-            }
-            if (allowedOrigins === "*") {
-                return callback(null, true);
-            }
-            const isAllowed = corsOrigins.some(
-                (o) => o === origin || (o.endsWith("*") && origin.startsWith(o.slice(0, -1)))
-            );
-            if (isAllowed) {
-                return callback(null, true);
-            }
-            callback(new Error("Not allowed by CORS"));
-        },
-        credentials: true
+    cors((req, callback) => {
+        const origin = req.headers.origin;
+        const requestHost = `${req.protocol}://${req.headers.host}`;
+
+        // Requests from the app's own origin must never be blocked. When the
+        // backend serves the built SPA, the browser sends an Origin header for
+        // the module script (Vite marks it crossorigin) and rejecting it would
+        // block the frontend's own JavaScript and leave a blank page.
+        const sameOrigin = !origin || origin === requestHost;
+        const allowed = sameOrigin || originAllowed(origin);
+
+        callback(null, {
+            origin: allowAllOrigins ? "*" : allowed ? origin : false,
+            credentials: true
+        });
     })
 );
 
