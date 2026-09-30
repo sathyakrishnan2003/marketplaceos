@@ -125,9 +125,9 @@ if (require.main === module) {
 
     const start = async () => {
         // Hosts without a shell (Render free) cannot run the migration by hand,
-        // so the schema is applied on first boot. Set AUTO_MIGRATE=false to opt
-        // out and manage the schema separately.
-        if (process.env.AUTO_MIGRATE === "true") {
+        // so the schema is applied on first boot. Opt out with AUTO_MIGRATE=false
+        // when the schema is managed separately.
+        if (process.env.AUTO_MIGRATE !== "false") {
             try {
                 await require("./scripts/bootstrap")();
             } catch (error) {
