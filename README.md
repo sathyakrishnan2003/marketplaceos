@@ -102,69 +102,76 @@ frontend/
 ## Deployment (free, no card)
 
 The API also serves the built SPA, so the whole application is **one service on one
-host** — there is no separate frontend deploy and no CORS origin to configure. You
-only need somewhere to run Node and a MySQL database.
+host** — one URL for both UI and API, no CORS origin to configure, no separate
+frontend deploy. You only need somewhere to run Node and a MySQL database.
 
 | Piece | Service | Plan |
 |---|---|---|
-| API + frontend (single service) | [Render](https://dashboard.render.com) | Free web service, 512 MB |
+| API + frontend (one service) | [Koyeb](https://koyeb.com) | One free web service, 512 MB, no card |
 | MySQL database | [Aiven](https://console.aiven.io/signup?service=mysql) | Free MySQL, 1 GB, no credit card |
+
+GitHub Pages is also published automatically
+(https://sathyakrishnan2003.github.io/marketplaceos) as a static mirror of the UI.
+Because it has no backend of its own, point it at the deployed API by adding a
+repository variable named `VITE_API_URL` (value must end in `/api`) under
+**Settings → Secrets and variables → Actions**, then re-running the workflow. The
+Koyeb URL needs no such setting because it serves the UI and the API together.
 
 ### 1. Database — Aiven
 
 Sign in with GitHub, create a **MySQL** service on the free plan, then copy the
 connection values from its **Connection** page: host, port, user, password, and
 database name. Free Aiven allows one service of each type per account, so delete
-any other MySQL/PostgreSQL service you created before if provisioning is refused.
+any other MySQL/PostgreSQL service first if provisioning is refused.
 
-### 2. Deploy the app — Render
+### 2. Deploy — Koyeb
 
-Go to [dashboard.render.com/yaml/new](https://dashboard.render.com/yaml/new) and
-paste `https://github.com/sathyakrishnan2003/marketplaceos`. Render reads the
-`render.yaml` in this repo, builds the frontend, and serves it from the same origin
-as the API. Fill in the values marked "sync: false" (`DB_HOST`, `DB_PORT`,
-`DB_USER`, `DB_PASSWORD`, `DB_NAME`) with the Aiven values. `JWT_SECRET` is
-generated for you. Leave `CORS_ORIGIN` alone — the SPA is same-origin.
+Click the button below, or go to https://app.koyeb.com and use **Create Web
+Service → GitHub → Public GitHub repository**:
 
-`PORT` is assigned by Render; do not override it.
+[![Deploy to Koyeb](https://www.koyeb.com/static/images/deploy/button.svg)](https://app.koyeb.com/deploy?type=git&builder=buildpack&repository=github.com/sathyakrishnan2003/marketplaceos&branch=main&name=marketplaceos)
 
-On the free plan the service **spins down after 15 minutes of inactivity** and the
-first request after that takes about a minute to wake it. That is expected and
-does not mean the deploy is broken.
+Set these on the service configuration screen:
 
-### 3. Initialize the database
+| Field | Value |
+|---|---|
+| Build command | `npm run install:all && npm run build` |
+| Start command | `npm start` |
+| Port | `8000` (Koyeb's default) |
 
-Render's free services have no shell, so the API prepares the database itself:
-`AUTO_MIGRATE=true` applies the schema on boot and seeds demo data only when the
-database is empty, so restarts and cold starts never re-seed. You do not need to
-run any migration command for the deployment to work.
+Then add the environment variables:
 
-To do it by hand instead, put the Aiven values in `backend/.env` (including
-`DB_SSL=true`) and run:
+| Key | Value |
+|---|---|
+| `JWT_SECRET` | 32+ char random string — `node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"` |
+| `DB_HOST` | host from Aiven |
+| `DB_PORT` | port from Aiven |
+| `DB_USER` | user from Aiven |
+| `DB_PASSWORD` | password from Aiven |
+| `DB_NAME` | database from Aiven |
+| `DB_SSL` | `true` |
 
-```bash
-cd backend
-npm run db:migrate
-npm run db:seed
-```
+`CORS_ORIGIN` can be left alone — the SPA is served from the same origin as the
+API. Koyeb assigns `PORT` itself; do not set it.
 
-`db:setup` drops the database and only works against a local MySQL.
+### 3. The database initializes itself
 
-The app is now live at `https://<service>.onrender.com` — API and UI on one URL.
+There is nothing else to run. The service applies the schema on boot and seeds
+demo data only when the database is empty, so cold starts never re-seed. Set
+`AUTO_MIGRATE=false` to manage the schema yourself with `npm run db:migrate` and
+`npm run db:seed`.
 
 ### Known limitation on the free plan
 
-Uploaded product images are written to the container's local disk, which Render
-discards whenever the instance restarts or spins down. Seeded demo products keep
-their images. Durable uploads need object storage (S3/R2), which is a separate
-configuration step.
+Uploaded product images are written to the container's local disk, which is
+discarded when the instance restarts. Seeded demo products keep their images.
+Durable uploads need object storage (S3/R2), a separate configuration step.
 
 ### Other hosts
 
 `railway.toml`, `Procfile`, and `Dockerfile` live at the **repo root** and all build
-the frontend and start the API together, so any Node host works. For Railway, add
-its MySQL plugin, set `JWT_SECRET`, then run `npm run db:migrate && npm run
-db:seed` in the service shell.
+the frontend and start the API together, so any Node or Docker host works.
+`render.yaml` holds an equivalent Render blueprint.
 
 ### Troubleshooting
 
